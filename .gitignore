@@ -1,0 +1,12 @@
+build/
+*.tfstate
+*.tfstate.*
+.terraform/
+*.pem
+*.key
+secrets/
+*.secret.yaml
+sealed-cert.pem.bak
+.env
+__pycache__/
+.venv/
