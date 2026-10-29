@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: saleor-dev
+  labels:
+    app.kubernetes.io/part-of: acdp
+    environment: dev

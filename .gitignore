@@ -10,3 +10,5 @@ sealed-cert.pem.bak
 .env
 __pycache__/
 .venv/
+.secrets/ # Local-only secrets, never commit
+.secrets/
