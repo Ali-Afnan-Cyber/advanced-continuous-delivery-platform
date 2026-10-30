@@ -1,0 +1,65 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: saleor-migrate
+  namespace: saleor-dev
+  labels:
+    app.kubernetes.io/name: saleor-migrate
+    app.kubernetes.io/instance: saleor-dev
+    app.kubernetes.io/component: migration
+    app.kubernetes.io/part-of: acdp
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: saleor-migrate
+        app.kubernetes.io/instance: saleor-dev
+        app.kubernetes.io/component: migration
+        app.kubernetes.io/part-of: acdp
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: migrate
+          image: ghcr.io/saleor/saleor:3.23.41
+          imagePullPolicy: IfNotPresent
+          command: ["python3", "manage.py", "migrate"]
+          env:
+            - name: DEBUG
+              value: "False"
+            - name: ALLOWED_CLIENT_HOSTS
+              value: "shop-dev.cdp.test,localhost"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: saleor-db-credentials
+                  key: POSTGRES_PASSWORD
+            - name: DATABASE_URL
+              value: "postgres://saleor:$(POSTGRES_PASSWORD)@saleor-postgres:5432/saleor"
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: saleor-app-secrets
+                  key: SECRET_KEY
+            - name: RSA_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: saleor-app-secrets
+                  key: RSA_PRIVATE_KEY
+          resources:
+            requests:
+              cpu: 100m
+              memory: 300Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
