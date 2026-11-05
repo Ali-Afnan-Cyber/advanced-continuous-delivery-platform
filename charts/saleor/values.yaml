@@ -1,0 +1,55 @@
+# No secrets here. Only secret names and key names.
+postgres:
+  name: saleor-postgres
+  replicas: 1
+  image:
+    repository: postgres
+    tag: 15.19-alpine3.24
+    pullPolicy: IfNotPresent
+  port: 5432
+  user: saleor
+  database: saleor
+  pgdata: /var/lib/postgresql/data/pgdata
+  runAsUser: 70
+  credentials:
+    secretName: saleor-db-credentials
+    passwordKey: POSTGRES_PASSWORD
+  persistence:
+    claimName: data
+    size: 5Gi
+    storageClass: local-path
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+  probes:
+    startup:   { periodSeconds: 5,  failureThreshold: 36 }
+    liveness:  { periodSeconds: 20, failureThreshold: 6, timeoutSeconds: 5 }
+    readiness: { periodSeconds: 10, failureThreshold: 3, timeoutSeconds: 5 }
+
+cache:
+  name: saleor-valkey
+  replicas: 1
+  image:
+    repository: valkey/valkey
+    tag: 8.1.10-alpine
+    pullPolicy: IfNotPresent
+  port: 6379
+  maxmemory: 96mb
+  maxmemoryPolicy: noeviction
+  extraArgs: ["--save", "", "--appendonly", "no", "--protected-mode", "no"]
+  runAsUser: 999
+  runAsGroup: 1000
+  resources:
+    requests: { cpu: 25m, memory: 16Mi }
+    limits:   { cpu: 200m, memory: 128Mi }
+  probes:
+    startup:   { periodSeconds: 3,  failureThreshold: 20 }
+    liveness:  { periodSeconds: 20, failureThreshold: 6, timeoutSeconds: 3 }
+    readiness: { periodSeconds: 10, timeoutSeconds: 3 }
+
+# Used by later tasks. Not rendered yet.
+ingress:
+  hosts:
+    api: ""
+    dashboard: ""
+    storefront: ""

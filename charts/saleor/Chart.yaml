@@ -1,0 +1,6 @@
+apiVersion: v2
+name: saleor
+description: ACDP Saleor platform (postgres, cache, and later api, worker, scheduler, dashboard, storefront)
+type: application
+version: 0.1.0
+appVersion: "3.23.41"

@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.cache.name }}
+  labels:
+    {{- include "saleor.labels" (dict "root" . "component" "cache") | nindent 4 }}
+spec:
+  replicas: {{ .Values.cache.replicas }}
+  selector:
+    matchLabels:
+      {{- include "saleor.selectorLabels" (dict "root" . "component" "cache") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "saleor.labels" (dict "root" . "component" "cache") | nindent 8 }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: {{ .Values.cache.runAsUser }}
+        runAsGroup: {{ .Values.cache.runAsGroup }}
+        fsGroup: {{ .Values.cache.runAsGroup }}
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: valkey
+          image: "{{ .Values.cache.image.repository }}:{{ .Values.cache.image.tag }}"
+          imagePullPolicy: {{ .Values.cache.image.pullPolicy }}
+          command:
+            - valkey-server
+            - --maxmemory
+            - {{ .Values.cache.maxmemory | quote }}
+            - --maxmemory-policy
+            - {{ .Values.cache.maxmemoryPolicy | quote }}
+            {{- range .Values.cache.extraArgs }}
+            - {{ . | quote }}
+            {{- end }}
+          ports:
+            - name: valkey
+              containerPort: {{ .Values.cache.port }}
+          resources:
+            {{- toYaml .Values.cache.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          startupProbe:
+            exec:
+              command: ["sh", "-c", "test \"$(valkey-cli ping)\" = PONG"]
+            {{- toYaml .Values.cache.probes.startup | nindent 12 }}
+          livenessProbe:
+            exec:
+              command: ["sh", "-c", "test \"$(valkey-cli ping)\" = PONG"]
+            {{- toYaml .Values.cache.probes.liveness | nindent 12 }}
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "test \"$(valkey-cli ping)\" = PONG"]
+            {{- toYaml .Values.cache.probes.readiness | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          emptyDir: {}
