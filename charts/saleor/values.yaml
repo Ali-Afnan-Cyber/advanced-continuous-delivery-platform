@@ -47,6 +47,37 @@ cache:
     liveness:  { periodSeconds: 20, failureThreshold: 6, timeoutSeconds: 3 }
     readiness: { periodSeconds: 10, timeoutSeconds: 3 }
 
+api:
+  name: saleor-api
+  replicas: 1
+  image:
+    repository: ghcr.io/saleor/saleor
+    tag: 3.23.41
+    pullPolicy: IfNotPresent
+  port: 8000
+  runAsUser: 999
+  runAsGroup: 999
+  readOnlyRootFilesystem: true
+  secrets:
+    appSecretName: saleor-app-secrets
+    secretKeyKey: SECRET_KEY
+    rsaKey: RSA_PRIVATE_KEY
+  # Plain literals only. DATABASE_URL and CELERY_BROKER_URL are built in the template.
+  # EMAIL_URL is not set: Mailpit is not in the cluster yet.
+  # AWS_STORAGE_BUCKET_NAME is not set: media is local for now.
+  env:
+    DEBUG: "False"
+    ENABLE_SSL: "False"
+    PUBLIC_URL: "http://api-dev.cdp.test"
+    ALLOWED_CLIENT_HOSTS: "dash-dev.cdp.test,shop-dev.cdp.test,api-dev.cdp.test"
+  resources:
+    requests: { cpu: 100m, memory: 300Mi }
+    limits:   { cpu: 500m, memory: 1Gi }
+  probes:
+    startup:   { periodSeconds: 10, failureThreshold: 30 }
+    liveness:  { periodSeconds: 20, failureThreshold: 6, timeoutSeconds: 5 }
+    readiness: { periodSeconds: 10, failureThreshold: 3, timeoutSeconds: 5 }
+
 # Used by later tasks. Not rendered yet.
 ingress:
   hosts:

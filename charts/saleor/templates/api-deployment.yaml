@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.api.name }}
+  labels:
+    {{- include "saleor.labels" (dict "root" . "component" "api") | nindent 4 }}
+spec:
+  replicas: {{ .Values.api.replicas }}
+  selector:
+    matchLabels:
+      {{- include "saleor.selectorLabels" (dict "root" . "component" "api") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "saleor.labels" (dict "root" . "component" "api") | nindent 8 }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: {{ .Values.api.runAsUser }}
+        runAsGroup: {{ .Values.api.runAsGroup }}
+        fsGroup: {{ .Values.api.runAsGroup }}
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: api
+          image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}"
+          imagePullPolicy: {{ .Values.api.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.api.port }}
+          env:
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.api.secrets.appSecretName }}
+                  key: {{ .Values.api.secrets.secretKeyKey }}
+            - name: RSA_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.api.secrets.appSecretName }}
+                  key: {{ .Values.api.secrets.rsaKey }}
+            # DB_PASSWORD must come before DATABASE_URL. Kubernetes only expands
+            # $(DB_PASSWORD) if it is defined earlier in this list.
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgres.credentials.secretName }}
+                  key: {{ .Values.postgres.credentials.passwordKey }}
+            - name: DATABASE_URL
+              value: {{ printf "postgres://%s:$(DB_PASSWORD)@%s:%v/%s" .Values.postgres.user .Values.postgres.name .Values.postgres.port .Values.postgres.database | quote }}
+            - name: CELERY_BROKER_URL
+              value: {{ printf "redis://%s:%v/1" .Values.cache.name .Values.cache.port | quote }}
+            {{- range $name, $value := .Values.api.env }}
+            - name: {{ $name }}
+              value: {{ $value | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.api.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: {{ .Values.api.readOnlyRootFilesystem }}
+            capabilities:
+              drop: ["ALL"]
+          startupProbe:
+            tcpSocket:
+              port: http
+            {{- toYaml .Values.api.probes.startup | nindent 12 }}
+          livenessProbe:
+            tcpSocket:
+              port: http
+            {{- toYaml .Values.api.probes.liveness | nindent 12 }}
+          readinessProbe:
+            tcpSocket:
+              port: http
+            {{- toYaml .Values.api.probes.readiness | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: media
+              mountPath: /app/media
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: media
+          emptyDir: {}
