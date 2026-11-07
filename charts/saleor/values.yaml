@@ -74,9 +74,46 @@ api:
     requests: { cpu: 100m, memory: 300Mi }
     limits:   { cpu: 500m, memory: 1Gi }
   probes:
-    startup:   { periodSeconds: 10, failureThreshold: 30 }
-    liveness:  { periodSeconds: 20, failureThreshold: 6, timeoutSeconds: 5 }
-    readiness: { periodSeconds: 10, failureThreshold: 3, timeoutSeconds: 5 }
+    startup:   { periodSeconds: 10, failureThreshold: 60, timeoutSeconds: 10 }
+    liveness:  { periodSeconds: 20, failureThreshold: 6, timeoutSeconds: 10 }
+    readiness: { periodSeconds: 10, failureThreshold: 6, timeoutSeconds: 10 }
+
+worker:
+  name: saleor-worker
+  replicas: 1
+  image:
+    repository: ghcr.io/saleor/saleor
+    tag: 3.23.41
+    pullPolicy: IfNotPresent
+  logLevel: info
+  # Celery starts one child process per CPU by default. One is enough on this VM.
+  concurrency: 1
+  runAsUser: 999
+  runAsGroup: 999
+  resources:
+    requests: { cpu: 100m, memory: 300Mi }
+    limits:   { cpu: 500m, memory: 768Mi }
+  probes:
+    startup:   { periodSeconds: 5,  failureThreshold: 60, timeoutSeconds: 10 }
+    liveness:  { periodSeconds: 20, failureThreshold: 6,  timeoutSeconds: 10 }
+    readiness: { periodSeconds: 20, failureThreshold: 6,  timeoutSeconds: 10 }
+
+scheduler:
+  name: saleor-scheduler
+  image:
+    repository: ghcr.io/saleor/saleor
+    tag: 3.23.41
+    pullPolicy: IfNotPresent
+  logLevel: info
+  runAsUser: 999
+  runAsGroup: 999
+  resources:
+    requests: { cpu: 50m,  memory: 150Mi }
+    limits:   { cpu: 300m, memory: 512Mi }
+  probes:
+    startup:   { periodSeconds: 5,  failureThreshold: 60, timeoutSeconds: 10 }
+    liveness:  { periodSeconds: 20, failureThreshold: 6,  timeoutSeconds: 10 }
+    readiness: { periodSeconds: 20, failureThreshold: 6,  timeoutSeconds: 10 }
 
 # Used by later tasks. Not rendered yet.
 ingress:

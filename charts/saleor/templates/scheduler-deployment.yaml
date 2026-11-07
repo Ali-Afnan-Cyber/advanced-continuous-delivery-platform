@@ -1,0 +1,74 @@
+{{- /*
+The probe command checks that a celery beat process exists.
+It reads /proc because pgrep and ps are not in the Saleor image.
+"[b]eat" matches "beat" but not its own text, so the probe cannot find itself.
+*/ -}}
+{{- $alive := list "sh" "-c" "cat /proc/[0-9]*/cmdline 2>/dev/null | tr '\\0' ' ' | grep -q 'celery.*[b]eat'" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.scheduler.name }}
+  labels:
+    {{- include "saleor.labels" (dict "root" . "component" "scheduler") | nindent 4 }}
+spec:
+  # EXACTLY ONE copy. Two beats would queue every scheduled job twice.
+  # This number is not in values.yaml on purpose.
+  replicas: 1
+  # Recreate stops the old pod before the new one starts, so two beats
+  # never run at the same time during a rollout.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "saleor.selectorLabels" (dict "root" . "component" "scheduler") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "saleor.labels" (dict "root" . "component" "scheduler") | nindent 8 }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: {{ .Values.scheduler.runAsUser }}
+        runAsGroup: {{ .Values.scheduler.runAsGroup }}
+        fsGroup: {{ .Values.scheduler.runAsGroup }}
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: scheduler
+          image: "{{ .Values.scheduler.image.repository }}:{{ .Values.scheduler.image.tag }}"
+          imagePullPolicy: {{ .Values.scheduler.image.pullPolicy }}
+          command:
+            - celery
+            - --app
+            - saleor.celeryconf:app
+            - beat
+            - --loglevel={{ .Values.scheduler.logLevel }}
+            # The root filesystem is read-only, so beat keeps its schedule file in /tmp.
+            - --schedule=/tmp/celerybeat-schedule
+          env:
+            {{- include "saleor.celeryEnv" . | nindent 12 }}
+          resources:
+            {{- toYaml .Values.scheduler.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          startupProbe:
+            exec:
+              command: {{ toJson $alive }}
+            {{- toYaml .Values.scheduler.probes.startup | nindent 12 }}
+          livenessProbe:
+            exec:
+              command: {{ toJson $alive }}
+            {{- toYaml .Values.scheduler.probes.liveness | nindent 12 }}
+          readinessProbe:
+            exec:
+              command: {{ toJson $alive }}
+            {{- toYaml .Values.scheduler.probes.readiness | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
