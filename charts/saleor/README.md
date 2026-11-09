@@ -25,3 +25,12 @@ Helm chart for the ACDP Saleor platform on single-node K3s (namespace `saleor-de
     helm lint charts/saleor
     helm template saleor charts/saleor -n saleor-dev
     helm upgrade --install saleor charts/saleor -n saleor-dev
+
+## Dashboard
+
+- Image `ghcr.io/saleor/saleor-dashboard:3.23.39`, 1 replica, plain Deployment (no canary).
+- `dashboard.apiUrl` sets `API_URL`. The browser calls it, so it is the public api name.
+- The image's start script edits `/app/dashboard/index.html`. An init container copies the
+  bundle into an emptyDir so the pod can run as uid 101 with a read-only root filesystem.
+- Needs no secrets. `dashboard.writablePaths` are emptyDir mounts for nginx temp files.
+- Starting resources: 16Mi request, 64Mi limit.

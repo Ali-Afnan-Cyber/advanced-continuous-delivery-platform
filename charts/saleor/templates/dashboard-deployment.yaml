@@ -1,0 +1,84 @@
+{{- $d := .Values.dashboard }}
+{{- $ctx := dict "component" "saleor-dashboard" "root" . }}
+{{- $image := printf "%s:%s" $d.image.repository $d.image.tag }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: saleor-dashboard
+  labels:
+    {{- include "saleor.labels" $ctx | nindent 4 }}
+spec:
+  replicas: {{ $d.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "saleor.selectorLabels" $ctx | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "saleor.labels" $ctx | nindent 8 }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: {{ $d.runAsUser }}
+        runAsGroup: {{ $d.runAsUser }}
+        seccompProfile:
+          type: RuntimeDefault
+        # Lets a non-root process bind port 80.
+        sysctls:
+          - name: net.ipv4.ip_unprivileged_port_start
+            value: "0"
+      # The image's start script edits /app/dashboard/index.html (it sets API_URL).
+      # /app is root-owned, so copy the bundle into a writable emptyDir first.
+      initContainers:
+        - name: copy-app
+          image: {{ $image | quote }}
+          command: ["sh", "-c", "cp -R /app/dashboard/. /work/"]
+          securityContext:
+            {{- toYaml $d.containerSecurityContext | nindent 12 }}
+          resources:
+            {{- toYaml $d.resources | nindent 12 }}
+          volumeMounts:
+            - name: app
+              mountPath: /work
+      containers:
+        - name: dashboard
+          image: {{ $image | quote }}
+          ports:
+            - name: http
+              containerPort: {{ $d.port }}
+          env:
+            - name: API_URL
+              value: {{ $d.apiUrl | quote }}
+          securityContext:
+            {{- toYaml $d.containerSecurityContext | nindent 12 }}
+          resources:
+            {{- toYaml $d.resources | nindent 12 }}
+          startupProbe:
+            tcpSocket: { port: http }
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 30
+          livenessProbe:
+            tcpSocket: { port: http }
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 6
+          readinessProbe:
+            tcpSocket: { port: http }
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          volumeMounts:
+            - name: app
+              mountPath: /app/dashboard
+          {{- range $i, $path := $d.writablePaths }}
+            - name: writable-{{ $i }}
+              mountPath: {{ $path }}
+          {{- end }}
+      volumes:
+        - name: app
+          emptyDir: {}
+      {{- range $i, $path := $d.writablePaths }}
+        - name: writable-{{ $i }}
+          emptyDir: {}
+      {{- end }}

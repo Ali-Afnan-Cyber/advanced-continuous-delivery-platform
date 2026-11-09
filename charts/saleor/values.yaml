@@ -121,3 +121,26 @@ ingress:
     api: ""
     dashboard: ""
     storefront: ""
+
+dashboard:
+  replicaCount: 1
+  image:
+    repository: ghcr.io/saleor/saleor-dashboard
+    tag: "3.23.39"
+  # The browser calls this URL, so it must be the public api name (Task 5 exposes it).
+  apiUrl: http://api-dev.cdp.test/graphql/
+  port: 80
+  runAsUser: 101
+  resources:
+    requests: { cpu: 10m, memory: 16Mi }
+    limits: { cpu: 100m, memory: 64Mi }
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: ["ALL"]
+  # Scratch space nginx writes to while the root filesystem is read-only.
+  writablePaths:
+    - /var/cache/nginx
+    - /run
+    - /tmp
