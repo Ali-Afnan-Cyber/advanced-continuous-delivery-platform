@@ -1,0 +1,13 @@
+{{- /*
+Safety checks. This file renders nothing.
+It stops helm early if a setting that must stay safe in the cluster is changed.
+*/ -}}
+{{- if ne (lower (toString .Values.api.env.DEBUG)) "false" }}
+{{- fail "api.env.DEBUG must stay False in the cluster" }}
+{{- end }}
+{{- if not .Values.api.env.ALLOWED_CLIENT_HOSTS }}
+{{- fail "api.env.ALLOWED_CLIENT_HOSTS must not be empty when DEBUG is False" }}
+{{- end }}
+{{- if not .Values.api.env.ALLOWED_HOSTS }}
+{{- fail "api.env.ALLOWED_HOSTS must not be empty when DEBUG is False" }}
+{{- end }}

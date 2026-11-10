@@ -41,3 +41,13 @@ Helm chart for the ACDP Saleor platform on single-node K3s (namespace `saleor-de
 - `ingress.hosts.api` and `ingress.hosts.dashboard` map to the `saleor-api` and `saleor-dashboard` Services.
 - Phase 3 is plain HTTP on the `web` entrypoint. TLS is added in Phase 5.
 - Local access: add both names to the Windows hosts file with the VM IP.
+
+## Security settings
+
+- `DEBUG` must stay `False`. `templates/guards.yaml` stops helm if it changes, or if the host lists below are empty.
+- `ALLOWED_HOSTS` is the Django host check on the api. `ALLOWED_CLIENT_HOSTS` lists the dashboard and storefront hosts.
+  Worker and scheduler need the second one too, because Saleor checks it at startup.
+- Secret `saleor-app-secrets` is created outside the chart and never goes in Git. It holds `SECRET_KEY` and `RSA_PRIVATE_KEY`.
+  api, worker and scheduler read both with `secretKeyRef`, so all three share the same values.
+- The local copy of the RSA key lives in `.secrets/` (git-ignored, mode 600).
+- Check: `/.well-known/jwks.json` on the api returns the public key made from `RSA_PRIVATE_KEY`.
