@@ -70,6 +70,7 @@ api:
     ENABLE_SSL: "False"
     PUBLIC_URL: "http://api-dev.cdp.test"
     ALLOWED_CLIENT_HOSTS: "dash-dev.cdp.test,shop-dev.cdp.test,api-dev.cdp.test"
+    ALLOWED_HOSTS: "api-dev.cdp.test,localhost,127.0.0.1"
   resources:
     requests: { cpu: 100m, memory: 300Mi }
     limits:   { cpu: 500m, memory: 1Gi }
@@ -115,12 +116,16 @@ scheduler:
     liveness:  { periodSeconds: 20, failureThreshold: 6,  timeoutSeconds: 10 }
     readiness: { periodSeconds: 20, failureThreshold: 6,  timeoutSeconds: 10 }
 
-# Used by later tasks. Not rendered yet.
+# Phase 3 serves plain HTTP on the Traefik "web" entrypoint. Phase 5 adds TLS.
 ingress:
+  enabled: true
+  className: traefik
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
   hosts:
-    api: ""
-    dashboard: ""
-    storefront: ""
+    api: api-dev.cdp.test
+    dashboard: dash-dev.cdp.test
+    storefront: ""   # Phase 9, not rendered yet
 
 dashboard:
   replicaCount: 1

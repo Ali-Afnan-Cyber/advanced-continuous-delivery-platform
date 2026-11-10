@@ -1,0 +1,36 @@
+{{- if .Values.ingress.enabled }}
+{{- $ctx := dict "component" "ingress" "root" . }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: saleor
+  labels:
+    {{- include "saleor.labels" $ctx | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: {{ .Values.ingress.hosts.api | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Values.api.name }}
+                port:
+                  name: http
+    - host: {{ .Values.ingress.hosts.dashboard | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: saleor-dashboard
+                port:
+                  name: http
+{{- end }}

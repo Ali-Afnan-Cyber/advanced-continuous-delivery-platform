@@ -34,3 +34,10 @@ Helm chart for the ACDP Saleor platform on single-node K3s (namespace `saleor-de
   bundle into an emptyDir so the pod can run as uid 101 with a read-only root filesystem.
 - Needs no secrets. `dashboard.writablePaths` are emptyDir mounts for nginx temp files.
 - Starting resources: 16Mi request, 64Mi limit.
+
+## Ingress
+
+- Uses the Traefik that K3s ships. Do not install a second one.
+- `ingress.hosts.api` and `ingress.hosts.dashboard` map to the `saleor-api` and `saleor-dashboard` Services.
+- Phase 3 is plain HTTP on the `web` entrypoint. TLS is added in Phase 5.
+- Local access: add both names to the Windows hosts file with the VM IP.
