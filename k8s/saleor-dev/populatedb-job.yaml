@@ -1,0 +1,81 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: saleor-populatedb
+  namespace: saleor-dev
+  labels:
+    app.kubernetes.io/name: saleor-populatedb
+    app.kubernetes.io/instance: saleor-dev
+    app.kubernetes.io/component: bootstrap
+    app.kubernetes.io/part-of: acdp
+spec:
+  # One shot. populatedb is not idempotent, so no automatic retry.
+  backoffLimit: 0
+  activeDeadlineSeconds: 1800
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: saleor-populatedb
+        app.kubernetes.io/instance: saleor-dev
+        app.kubernetes.io/component: bootstrap
+        app.kubernetes.io/part-of: acdp
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: populatedb
+          image: ghcr.io/saleor/saleor:3.23.41
+          imagePullPolicy: IfNotPresent
+          command: ["python3", "manage.py", "populatedb"]
+          # No CELERY_BROKER_URL on purpose. Without a broker Saleor runs its
+          # background tasks inside this process, which is right for a one-off seed.
+          env:
+            - name: DEBUG
+              value: "False"
+            - name: ALLOWED_CLIENT_HOSTS
+              value: "dash-dev.cdp.test,shop-dev.cdp.test,api-dev.cdp.test"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: saleor-db-credentials
+                  key: POSTGRES_PASSWORD
+            - name: DATABASE_URL
+              value: "postgres://saleor:$(POSTGRES_PASSWORD)@saleor-postgres:5432/saleor"
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: saleor-app-secrets
+                  key: SECRET_KEY
+            - name: RSA_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: saleor-app-secrets
+                  key: RSA_PRIVATE_KEY
+          resources:
+            requests:
+              cpu: 100m
+              memory: 300Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: media
+              mountPath: /app/media
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: media
+          emptyDir: {}
