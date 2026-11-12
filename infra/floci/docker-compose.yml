@@ -1,0 +1,22 @@
+services:
+  floci:
+    image: floci/floci:2.2.0
+    container_name: floci
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:4566:4566"
+    environment:
+      FLOCI_STORAGE_MODE: persistent
+      FLOCI_STORAGE_PERSISTENT_PATH: /app/data
+    volumes:
+      - floci-data:/app/data
+    mem_limit: 512m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  floci-data:
+    name: floci-data
