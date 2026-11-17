@@ -10,6 +10,6 @@ output "kms_key_id" {
   value = module.aws_local.kms_key_id
 }
 
-output "cluster_check_uid" {
-  value = module.cluster_addons.cluster_check_uid
+output "namespace_names" {
+  value = module.cluster_addons.namespace_names
 }
