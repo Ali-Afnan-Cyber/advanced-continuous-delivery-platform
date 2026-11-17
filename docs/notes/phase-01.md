@@ -1,4 +1,4 @@
-# Phase 3: Saleor services on K3s
+# Phase 1: Saleor services on K3s
 
 ## How I would explain it
 
@@ -9,7 +9,7 @@ SECRET_KEY and the RSA key come from Kubernetes Secrets through `secretKeyRef`.
 
 Traefik, which K3s ships, is the ingress. It reads one Ingress object and sends
 `api-dev.cdp.test` to the api Service and `dash-dev.cdp.test` to the dashboard
-Service. It matches on the Host header, so an unknown host gets a 404. Phase 3
+Service. It matches on the Host header, so an unknown host gets a 404. Phase 1
 is plain HTTP. TLS comes in Phase 5. On my Windows PC the hosts file maps both
 names to the VM IP.
 
