@@ -20,3 +20,19 @@ provider "aws" {
     kms = local.floci
   }
 }
+
+# The live K3s cluster. The kubeconfig belongs to the VM user (mode 600).
+locals {
+  kubeconfig = pathexpand("~/.kube/config")
+}
+
+provider "kubernetes" {
+  config_path = local.kubeconfig
+}
+
+# Helm provider 3.x takes the cluster settings as an attribute, not a block.
+provider "helm" {
+  kubernetes = {
+    config_path = local.kubeconfig
+  }
+}
